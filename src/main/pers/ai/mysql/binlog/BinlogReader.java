@@ -18,18 +18,17 @@ public class BinlogReader {
 
   private BinaryReader _reader;
   private byte[] _buffer;
-  private ReadContext _context;
-  private EventHeader _currentEventHeader;
+  private EventContext _context;
+  private EventHeader _eventHeader;
   private EventBase _currentEvent;
   private ILogger _logger;
   private int _status;
 
   private BinlogReader(BinaryReader reader) {
     this._reader = reader;
-    this._context = new ReadContext();
-    this._context.BinlogVersion = 0;
+    this._context = new EventContext();
     this._buffer = new byte[19];
-    this._currentEventHeader = new EventHeader();
+    this._eventHeader = new EventHeader();
     this._status = S_NONE;
   }
 
@@ -46,19 +45,15 @@ public class BinlogReader {
   }
 
   public long getEventTimestamp() {
-    return this._currentEventHeader.Timestamp;
+    return this._eventHeader.Timestamp;
   }
 
   public long getEventServerId() {
-    return this._currentEventHeader.ServerId;
+    return this._eventHeader.ServerId;
   }
 
   public long getEventType() {
-    return this._currentEventHeader.EventType;
-  }
-
-  public void setVersion(int ver) {
-    this._context.BinlogVersion = ver;
+    return this._eventHeader.EventType;
   }
 
   public boolean read() throws Exception {
@@ -67,35 +62,38 @@ public class BinlogReader {
       return false;
     }
 
+    EventHeader header = this._eventHeader;
     try {
-      this._currentEventHeader.Timestamp = 0xFFFFFFFFL & this._reader.readInt4L();
-      this._currentEventHeader.EventType = this._reader.readByte();
-      this._currentEventHeader.ServerId = 0xFFFFFFFFL & this._reader.readInt4L();
-      this._currentEventHeader.EventSize = this._reader.readInt4L();
-      // TODO: the following 2 lines only works for ver 1+.
-      this._currentEventHeader.NextEventPosition = 0xFFFFFFFFL & this._reader.readInt4L();
-      this._currentEventHeader.EventFlag = this._reader.readInt2L();
-
-      this._status = S_EVENT_HEADER;
-      if (this._context.BinlogVersion == 0) {
-        // The first event, the FormatDescriptionEvent for ver 4+
-        this.readEvent();
+      header.Timestamp = 0xFFFFFFFFL & this._reader.readInt4L();
+      header.EventType = this._reader.readByte();
+      header.ServerId = 0xFFFFFFFFL & this._reader.readInt4L();
+      header.EventSize = this._reader.readInt4L();
+      if (this._context.FormatDescription == null || this._context.FormatDescription.BinlogVersion > 1) {
+        header.NextEventPosition = 0xFFFFFFFFL & this._reader.readInt4L();
+        header.EventFlag = this._reader.readInt2L();
+      } else {
+        header.NextEventPosition = 0;
+        header.EventFlag = 0;
       }
 
-      return true;
+      this._status = S_EVENT_HEADER;
     } catch (Exception ex) {
       if (this._logger != null) {
         this._logger.log(LoggerLevels.ERROR, "BinlogReader", "Unable to read data. %s", ex.getMessage());
       }
-
-      return false;
     }
+
+    if (header.EventType == EventTypes.FORMAT_DESCRIPTION_EVENT) {
+      this._context.FormatDescription = (FormatDescriptionEvent) this.readEvent();
+    }
+
+    return true;
   }
 
   public EventBase readEvent() throws Exception {
     if (this._status == S_EVENT_HEADER) {
-      this._currentEvent = this._context.Events[(int)this._currentEventHeader.EventType];
-      this._currentEvent.fill(this._context, this._currentEventHeader, this._reader);
+      this._currentEvent = this._context.Events[(int)this._eventHeader.EventType];
+      this._currentEvent.fill(this._context, this._eventHeader, this._reader);
       this._status = S_EVENT_PAYLOAD;
     }
 

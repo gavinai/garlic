@@ -6,7 +6,7 @@ import pers.ai.mysql.binlog.events.*;
  * @author  Gavin Ai
  * @version 1.0
  */
-public class ReadContext {
+public class EventContext {
   public final EventBase[] Events = new EventBase[] {
           null, //UNKNOWN_EVENT = 0x00;
           null, //START_EVENT_V3 = 0x01;
@@ -46,9 +46,12 @@ public class ReadContext {
           new PreviousGtidsEvent(), //PREVIOUS_GTIDS_EVENT = 0x23;
   };
 
-  public int BinlogVersion;
-  public int EventHeaderLength;
+  public FormatDescriptionEvent FormatDescription;
   public byte[] EventTypeHeaderLength;
+
+  public EventContext() {
+    ;
+  }
 
   public int getEventTypeHeaderLength(int eventType) {
     if (this.EventTypeHeaderLength != null) {

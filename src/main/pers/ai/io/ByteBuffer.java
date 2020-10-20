@@ -11,6 +11,10 @@ public class ByteBuffer {
     }
   }
 
+  public void put(int off, byte val) {
+    this._data[off] = val;
+  }
+
   public ByteBuffer inflate(int capacity) {
     this._length = 0;
     if (this._data != null && this._data.length >= capacity) {
