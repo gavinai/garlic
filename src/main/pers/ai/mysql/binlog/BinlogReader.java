@@ -68,7 +68,7 @@ public class BinlogReader {
       header.EventType = this._reader.readByte();
       header.ServerId = 0xFFFFFFFFL & this._reader.readInt4L();
       header.EventSize = this._reader.readInt4L();
-      if (this._context.FormatDescription == null || this._context.FormatDescription.BinlogVersion > 1) {
+      if (this._context.FormatDescription == null || this._context.FormatDescription.getBinlogVersion() > 1) {
         header.NextEventPosition = 0xFFFFFFFFL & this._reader.readInt4L();
         header.EventFlag = this._reader.readInt2L();
       } else {
@@ -84,13 +84,13 @@ public class BinlogReader {
     }
 
     if (header.EventType == EventTypes.FORMAT_DESCRIPTION_EVENT) {
-      this._context.FormatDescription = (FormatDescriptionEvent) this.readEvent();
+      this._context.FormatDescription = (FormatDescriptionEvent) this.getEvent();
     }
 
     return true;
   }
 
-  public EventBase readEvent() throws Exception {
+  public EventBase getEvent() throws Exception {
     if (this._status == S_EVENT_HEADER) {
       this._currentEvent = this._context.Events[(int)this._eventHeader.EventType];
       this._currentEvent.fill(this._context, this._eventHeader, this._reader);

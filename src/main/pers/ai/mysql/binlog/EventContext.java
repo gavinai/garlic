@@ -47,17 +47,8 @@ public class EventContext {
   };
 
   public FormatDescriptionEvent FormatDescription;
-  public byte[] EventTypeHeaderLength;
 
   public EventContext() {
     ;
-  }
-
-  public int getEventTypeHeaderLength(int eventType) {
-    if (this.EventTypeHeaderLength != null) {
-      return this.EventTypeHeaderLength[eventType - 1];
-    }
-
-    return -1;
   }
 }

@@ -3,28 +3,34 @@ package pers.ai.mysql.binlog.events;
 import pers.ai.io.BinaryReader;
 import pers.ai.io.ByteBuffer;
 import pers.ai.mysql.Version;
-import pers.ai.mysql.binlog.BinlogVersions;
 import pers.ai.mysql.binlog.EventContext;
+import pers.ai.mysql.binlog.EventTypes;
+
+import java.sql.Timestamp;
 
 public class FormatDescriptionEvent extends EventBase {
   public static final int CHECK_SUM_NONE = 0;
   public static final int CHECK_SUM_CRC_32 = 1;
 
-  public short BinlogVersion;
-  public long CreateTimestamp;
-  public int EventHeaderLength;
-  public ByteBuffer EventTypeHeaderLength;
-  public Version ServerVersion;
-  public int ChecksumType;
-  public int ChecksumValue;
+  private short _binlogVersion;
+  private Version _serverVersion;
+  private long _createTimestamp;
+  private int _eventHeaderLength;
+  private ByteBuffer _eventTypeHeaderLength;
+  private int _checksumType;
+  private int _checksumValue;
 
   public FormatDescriptionEvent() {
-    this.BinlogVersion = 0;
-    this.EventTypeHeaderLength = new ByteBuffer(0);
-    this.EventHeaderLength = 0;
-    this.ChecksumType = CHECK_SUM_NONE;
+    super(EventTypes.FORMAT_DESCRIPTION_EVENT);
+    this._binlogVersion = 0;
+    this._createTimestamp = 0;
+    this._eventHeaderLength = 0;
+    this._eventTypeHeaderLength = new ByteBuffer(0);
+    this._checksumType = CHECK_SUM_NONE;
+    this._checksumValue = 0;
   }
 
+  @Override
   public EventBase fill(EventContext context, EventHeader header, BinaryReader reader) throws Exception {
     //  -  2                binlog-version
     //  -  string[50]       mysql-server version
@@ -33,40 +39,75 @@ public class FormatDescriptionEvent extends EventBase {
     //  -  string[p]        event type header lengths
 
     // binlog-version
-    this.BinlogVersion = reader.readInt2L();
+    this._binlogVersion = reader.readInt2L();
 
     // mysql-server version
     ByteBuffer version = new ByteBuffer(50);
     reader.read(version, 0, 50);
-    this.ServerVersion = this.parseVersionNumbers(version.getPayload());
+    this._serverVersion = this.parseVersionNumbers(version.getPayload());
 
     // create timestamp
-    this.CreateTimestamp = 0xFFFFFFFFL & reader.readInt4L();
+    this._createTimestamp = 0xFFFFFFFFL & reader.readInt4L();
 
     // event header length
-    this.EventHeaderLength = reader.readByte();
+    this._eventHeaderLength = reader.readByte();
 
     // event type header lengths
     int headerLenMapsLength;
-    if (this.ServerVersion.compareTo(5, 6, 0) <= 0) {
+    if (this._serverVersion.compareTo(5, 6, 0) <= 0) {
       // https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html#sysvar_binlog_checksum
-      headerLenMapsLength = (int)header.EventSize - (this.EventHeaderLength + 2 + 50 + 4 + 1) - 4 - 1;
+      headerLenMapsLength = (int)header.EventSize - (this._eventHeaderLength + 2 + 50 + 4 + 1) - 4 - 1;
     } else {
-      headerLenMapsLength = (int)header.EventSize - (this.EventHeaderLength + 2 + 50 + 4 + 1);
+      headerLenMapsLength = (int)header.EventSize - (this._eventHeaderLength + 2 + 50 + 4 + 1);
     }
-    this.EventTypeHeaderLength.inflate(headerLenMapsLength);
-    reader.read(this.EventTypeHeaderLength, 0, headerLenMapsLength);
+
+    this._eventTypeHeaderLength.inflate(headerLenMapsLength);
+    reader.read(this._eventTypeHeaderLength, 0, headerLenMapsLength);
 
     // binlog-checksum = {NONE|CRC32}
-    this.ChecksumType = reader.readByte();
+    this._checksumType = reader.readByte();
 
     // checksum
-    this.ChecksumValue = reader.readInt4L();
+    this._checksumValue = reader.readInt4L();
 
     return this;
   }
 
-  public Version parseVersionNumbers(byte[] data) {
+  @Override
+  public String getDescription() {
+    StringBuilder desc = new StringBuilder();
+    desc.append("binlog-version: ").append(this._binlogVersion).append("\r\n");
+    desc.append("mysql-server version: ").append(this._serverVersion.Major).append(".").append(this._serverVersion.Minor).append(".").append(this._serverVersion.Revision).append("\r\n");
+    desc.append("create timestamp: ").append(new Timestamp(this._createTimestamp * 1000).toGMTString()).append("\r\n");
+    desc.append("event header length: ").append(this._eventHeaderLength).append("\r\n");
+    desc.append("event type header lengths: ");
+    byte[] lengths = this._eventTypeHeaderLength.getPayload();
+    for (int i = 0; i < lengths.length; i++) {
+      desc.append(String.format("%02X ", lengths[i]));
+    }
+    desc.append("\r\n");
+    desc.append("binlog-checksum: ").append(this._checksumType == CHECK_SUM_CRC_32 ? "CRC32(" : "NONE(").append(this._checksumType).append(")\r\n");
+    return desc.toString();
+  }
+
+  public short getBinlogVersion() {
+    return this._binlogVersion;
+  }
+
+  public int getEventHeaderLength() {
+    return this._eventHeaderLength;
+  }
+
+  public int getEventTypeHeaderLength() {
+    byte[] data = this._eventTypeHeaderLength.getPayload();
+    if (data != null) {
+      return data[this.getEventType() - 1];
+    }
+
+    return -1;
+  }
+
+  private Version parseVersionNumbers(byte[] data) {
     int[] numbers = new int[3];
     StringBuilder sb = new StringBuilder(5);
     int gpidx = 0;

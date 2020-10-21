@@ -5,6 +5,7 @@ import pers.ai.io.ByteBuffer;
 import pers.ai.mysql.binlog.BinlogReader;
 import pers.ai.mysql.binlog.BinlogVersions;
 import pers.ai.mysql.binlog.EventContext;
+import pers.ai.mysql.binlog.EventTypes;
 
 public class QueryEvent extends EventBase {
   public long SlaveProxyId;
@@ -15,11 +16,13 @@ public class QueryEvent extends EventBase {
   public ByteBuffer Query;
 
   public QueryEvent() {
+    super(EventTypes.QUERY_EVENT);
     this.StatusVars = new ByteBuffer(0);
     this.Schema = new ByteBuffer(0);
     this.Query = new ByteBuffer(0);
   }
 
+  @Override
   public EventBase fill(EventContext context, EventHeader header, BinaryReader reader) throws Exception {
     // Post-header
     this.SlaveProxyId = 0xFFFFFFFFL & reader.readInt4L();
@@ -27,7 +30,7 @@ public class QueryEvent extends EventBase {
     int schemaLength = 0xFF & reader.readByte();
     this.ErrorCode = 0xFFFF & reader.readInt2L();
     int statusVarsLength;
-    if (context.FormatDescription.BinlogVersion >= BinlogVersions.VERSION_4) {
+    if (context.FormatDescription.getBinlogVersion() >= BinlogVersions.VERSION_4) {
       statusVarsLength = 0xFFFF & reader.readInt2L();
     } else {
       throw new Exception("Not supported.");
@@ -37,9 +40,14 @@ public class QueryEvent extends EventBase {
     this.StatusVars = BinlogReader.readFixedLengthString(reader, this.StatusVars, statusVarsLength);
     this.Schema = BinlogReader.readFixedLengthString(reader, this.Schema, schemaLength);
     reader.skip(1); // - skip 0
-    int remains = (int)header.EventSize - (context.FormatDescription.EventHeaderLength + 4 + 4 + 1 + 2 + 2 + statusVarsLength + schemaLength + 1);
+    int remains = (int)header.EventSize - (context.FormatDescription.getEventHeaderLength() + 4 + 4 + 1 + 2 + 2 + statusVarsLength + schemaLength + 1);
     this.Query = BinlogReader.readFixedLengthString(reader, this.Query, remains);
     return this;
+  }
+
+  @Override
+  public String getDescription() {
+    return null;
   }
 
   public String getQuery() {
