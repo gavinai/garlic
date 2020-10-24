@@ -39,7 +39,6 @@ public class BinlogReader {
   }
 
   public static ByteBuffer readFixedLengthString(BinaryReader reader, ByteBuffer buffer, int length) throws Exception {
-    buffer.inflate(length);
     reader.read(buffer, 0, length);
     return buffer;
   }

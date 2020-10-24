@@ -61,7 +61,6 @@ public class FormatDescriptionEvent extends EventBase {
       headerLenMapsLength = (int)header.EventSize - (this._eventHeaderLength + 2 + 50 + 4 + 1);
     }
 
-    this._eventTypeHeaderLength.inflate(headerLenMapsLength);
     reader.read(this._eventTypeHeaderLength, 0, headerLenMapsLength);
 
     // binlog-checksum = {NONE|CRC32}
@@ -105,6 +104,10 @@ public class FormatDescriptionEvent extends EventBase {
     }
 
     return -1;
+  }
+
+  public int getCheckSumType() {
+    return this._checksumType;
   }
 
   private Version parseVersionNumbers(byte[] data) {

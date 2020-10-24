@@ -1,7 +1,6 @@
 package pers.ai.mysql.binlog.events;
 
 import pers.ai.io.BinaryReader;
-import pers.ai.io.ByteBuffer;
 import pers.ai.mysql.binlog.EventContext;
 import pers.ai.mysql.binlog.EventTypes;
 
