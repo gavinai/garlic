@@ -97,10 +97,10 @@ public class FormatDescriptionEvent extends EventBase {
     return this._eventHeaderLength;
   }
 
-  public int getEventTypeHeaderLength() {
+  public int getEventTypeHeaderLength(int eventType) {
     byte[] data = this._eventTypeHeaderLength.getPayload();
     if (data != null) {
-      return data[this.getEventType() - 1];
+      return data[eventType - 1];
     }
 
     return -1;

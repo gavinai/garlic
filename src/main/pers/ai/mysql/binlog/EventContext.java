@@ -27,7 +27,7 @@ public class EventContext {
           null, //XID_EVENT = 0x10;
           null, //BEGIN_LOAD_QUERY_EVENT = 0x11;
           null, //EXECUTE_LOAD_QUERY_EVENT = 0x12;
-          null, //TABLE_MAP_EVENT = 0x13;
+          new TableMapEvent(), //TABLE_MAP_EVENT = 0x13;
           null, //WRITE_ROWS_EVENTv0 = 0x14;
           null, //UPDATE_ROWS_EVENTv0 = 0x15;
           null, //DELETE_ROWS_EVENTv0 = 0x16;
